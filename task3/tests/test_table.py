@@ -77,5 +77,35 @@ class TestTable(unittest.TestCase):
         self.table.clear()
         self.assertEqual(len(self.table), 0)
 
+    def test_sort_by_id(self):
+        self.table.add_student("Б", "A", 3.0)
+        self.table.add_student("А", "B", 4.0)
+        self.table.add_student("В", "C", 2.0)
+        
+        sorted_data = self.table.sort_by("id")
+        self.assertEqual(sorted_data[0].id, 1)
+        self.assertEqual(sorted_data[1].id, 2)
+        self.assertEqual(sorted_data[2].id, 3)
+    
+    def test_sort_by_name_asc(self):
+        self.table.add_student("Иван", "A", 4.0)
+        self.table.add_student("Анна", "B", 3.0)
+        self.table.add_student("Петр", "C", 5.0)
+        
+        sorted_data = self.table.sort_by("name", reverse=False)
+        self.assertEqual(sorted_data[0].name, "Анна")
+        self.assertEqual(sorted_data[1].name, "Иван")
+        self.assertEqual(sorted_data[2].name, "Петр")
+    
+    def test_sort_by_grade_desc(self):
+        self.table.add_student("Иван", "A", 4.0)
+        self.table.add_student("Анна", "B", 5.0)
+        self.table.add_student("Петр", "C", 3.0)
+        
+        sorted_data = self.table.sort_by("grade", reverse=True)
+        self.assertEqual(sorted_data[0].grade, 5.0)
+        self.assertEqual(sorted_data[1].grade, 4.0)
+        self.assertEqual(sorted_data[2].grade, 3.0)
+
 if __name__ == "__main__":
     unittest.main()
