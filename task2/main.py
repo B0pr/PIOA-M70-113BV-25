@@ -20,10 +20,12 @@ def main():
         print("1. Добавить студента")
         print("2. Показать всех студентов")
         print("3. Поиск по фильтру")
-        print("4. Выйти")
+        print("4. Обновить студента")
+        print("5. Удалить студента")
+        print("6. Выйти")
         print("-"*40)
         
-        choice = input("Выберите действие (1-4): ").strip()
+        choice = input("Выберите действие (1-6): ").strip()
         
         if choice == "1":
             print("\n--- Добавление студента ---")
@@ -40,15 +42,12 @@ def main():
                 grade = float(grade_input)
                 
                 student = db.add_student(name, group, grade)
-                print(f"\n Студент добавлен с ID: {student['id']}")
+                print(f"\n✅ Студент добавлен с ID: {student['id']}")
                 
             except ValueError as e:
-                print(f"\
-
-
-n Ошибка: {e}")
+                print(f"\n❌ Ошибка: {e}")
             except Exception as e:
-                print(f"\n Непредвиденная ошибка: {e}")
+                print(f"\n❌ Непредвиденная ошибка: {e}")
         
         elif choice == "2":
             print("\n--- Список всех студентов ---")
@@ -110,26 +109,73 @@ n Ошибка: {e}")
                         filters["grade"] = float(grade_input)
                     
                     if not filters:
-                        print("\n Не указано ни одного критерия поиска")
+                        print("\n❌ Не указано ни одного критерия поиска")
                     else:
                         results = db.find_by_multiple_filters(filters)
                         print(f"\n--- Результаты поиска ---")
                         print_students(results)
                 
                 else:
-                    print("\n Неверный выбор")
+                    print("\n❌ Неверный выбор")
             
             except ValueError as e:
-                print(f"\n Ошибка ввода: {e}")
+                print(f"\n❌ Ошибка ввода: {e}")
             except Exception as e:
-                print(f"\n Ошибка: {e}")
+                print(f"\n❌ Ошибка: {e}")
         
         elif choice == "4":
+            print("\n--- Обновление студента ---")
+            try:
+                id_input = input("Введите ID студента: ").strip()
+                student_id = int(id_input)
+                
+                print("Оставьте поле пустым, чтобы не менять")
+                name = input("Новое имя (Enter - пропустить): ").strip()
+                group = input("Новая группа (Enter - пропустить): ").strip()
+                grade_input = input("Новый балл (Enter - пропустить): ").strip()
+                
+                grade = float(grade_input) if grade_input else None
+                name = name if name else None
+                group = group if group else None
+                
+                db.update(student_id, name, group, grade)
+                print(f"\n✅ Студент с ID {student_id} обновлён")
+                
+            except ValueError as e:
+                print(f"\n❌ Ошибка: {e}")
+            except Exception as e:
+                print(f"\n❌ Непредвиденная ошибка: {e}")
+        
+        elif choice == "5":
+            print("\n--- Удаление студента ---")
+            try:
+                id_input = input("Введите ID студента для удаления: ").strip()
+                student_id = int(id_input)
+                
+                students = db.find_by_filter("id", student_id)
+                if students:
+                    print(f"Будет удалён: ", end="")
+                    print_student(students[0])
+                    confirm = input("Подтвердите удаление (y/n): ").strip().lower()
+                    if confirm == 'y':
+                        db.delete(student_id)
+                        print(f"\n✅ Студент с ID {student_id} удалён")
+                    else:
+                        print("\n❌ Удаление отменено")
+                else:
+                    print(f"\n❌ Студент с ID {student_id} не найден")
+                
+            except ValueError as e:
+                print(f"\n❌ Ошибка: {e}")
+            except Exception as e:
+                print(f"\n❌ Непредвиденная ошибка: {e}")
+        
+        elif choice == "6":
             print("\nДо свидания!")
             break
         
         else:
-            print("\n Неверный выбор, попробуйте снова")
+            print("\n❌ Неверный выбор, попробуйте снова")
 
 if __name__ == "__main__":
     main()
