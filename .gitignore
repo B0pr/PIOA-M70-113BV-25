@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+.coverage
+htmlcov/
+.pytest_cache/
+task4/students_data.json
+task4/data.json
+task4/students_data.csv

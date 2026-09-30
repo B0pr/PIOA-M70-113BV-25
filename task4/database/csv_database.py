@@ -1,131 +1,99 @@
+"""Файловая БД студентов с сохранением в CSV.
+
+Наследуется от Table — общая логика в родителе.
+Здесь реализованы загрузка, сохранение и индекс по ID.
+"""
+
 import csv
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from database.table import Table
 from models.student import Student
 
-class CSVFileDatabase:
-    """Файловая БД студентов с сохранением в CSV"""
-    
-    def __init__(self, filename="students_data.csv"):
+class CSVFileDatabase(Table):
+    """Файловая БД студентов с сохранением в CSV."""
+
+    SCHEMA = ["id", "name", "group", "grade"]
+
+    def __init__(self, filename: str = "students_data.csv"):
+        super().__init__()
         self.filename = filename
-        self._data = []
-        self._next_id = 1
-        self._index = {}  # индекс для быстрого поиска по ID
+        self._index = {}
         self._load()
-    
-    def _load(self):
-        """Загрузка данных из CSV-файла"""
+
+    # ---------- Загрузка / сохранение ----------
+
+    def _load(self) -> None:
+        """Загрузка данных из CSV-файла.
+
+        При ошибке чтения состояние НЕ сбрасывается в пустое —
+        бросается исключение, чтобы нельзя было потерять данные.
+        """
         self._data = []
         self._index = {}
-        
-        if os.path.exists(self.filename):
-            try:
-                with open(self.filename, 'r', encoding='utf-8') as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        student = Student(
-                            int(row['id']),
-                            row['name'],
-                            row['group'],
-                            float(row['grade'])
-                        )
-                        self._data.append(student)
-                        self._index[student.id] = student
-                        if student.id >= self._next_id:
-                            self._next_id = student.id + 1
-            except Exception as e:
-                print(f"Ошибка загрузки CSV: {e}")
-                self._data = []
-                self._next_id = 1
-                self._index = {}
-    
-    def _save(self):
-        """Сохранение данных в CSV-файл"""
+        self._next_id = 1
+
+        if not os.path.exists(self.filename):
+            return
+
         try:
-            with open(self.filename, 'w', encoding='utf-8', newline='') as f:
-                writer = csv.DictWriter(f, fieldnames=['id', 'name', 'group', 'grade'])
+            with open(self.filename, "r", encoding="utf-8", newline="") as f:
+                reader = csv.DictReader(f)
+                if reader.fieldnames != self.SCHEMA:
+                    raise IOError(
+                        f"Неверная схема CSV: ожидается {self.SCHEMA}, "
+                        f"получено {reader.fieldnames}"
+                    )
+                for row in reader:
+                    student = Student(
+                        int(row["id"]),
+                        row["name"],
+                        row["group"],
+                        float(row["grade"]),
+                    )
+                    self._data.append(student)
+                    self._index[student.id] = student
+                    if student.id >= self._next_id:
+                        self._next_id = student.id + 1
+        except (IOError, ValueError, KeyError, csv.Error) as e:
+            raise IOError(f"Не удалось загрузить CSV '{self.filename}': {e}")
+
+    def _save(self) -> None:
+        """Сохранение данных в CSV вместе со схемой (заголовком).
+
+        При ошибке — бросает IOError.
+        """
+        try:
+            with open(self.filename, "w", encoding="utf-8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=self.SCHEMA)
                 writer.writeheader()
                 for student in self._data:
                     writer.writerow(student.to_dict())
-        except Exception as e:
-            print(f"Ошибка сохранения CSV: {e}")
-    
-    def _rebuild_index(self):
-        """Перестроить индекс (после изменений)"""
-        self._index = {student.id: student for student in self._data}
-    
-    def add_student(self, name: str, group: str, grade: float) -> Student:
-        """Добавление студента"""
-        if not name or not name.strip():
-            raise ValueError("Имя не может быть пустым")
-        if not group or not group.strip():
-            raise ValueError("Группа не может быть пустой")
-        if not isinstance(grade, (int, float)):
-            raise ValueError("Балл должен быть числом")
-        if grade < 0 or grade > 5:
-            raise ValueError("Балл должен быть от 0 до 5")
-        
-        student = Student(self._next_id, name.strip(), group.strip(), float(grade))
-        self._data.append(student)
+        except (IOError, csv.Error) as e:
+            raise IOError(f"Не удалось сохранить CSV '{self.filename}': {e}")
+        # Индекс поддерживаем в актуальном состоянии
+        self._index = {s.id: s for s in self._data}
+
+    # ---------- Переопределяем, чтобы поддерживать индекс ----------
+
+    def add_student(self, name: str, group: str, grade):
+        """Добавляет студента и обновляет индекс."""
+        student = super().add_student(name, group, grade)
         self._index[student.id] = student
-        self._next_id += 1
-        self._save()
         return student
-    
-    def get_all(self) -> list:
-        """Получить всех студентов"""
-        return self._data.copy()
-    
-    def get_by_id(self, student_id: int) -> Student:
-        """Поиск студента по ID (с использованием индекса)"""
+
+    def get_by_id(self, student_id: int):
+        """Поиск по ID через индекс."""
         if student_id in self._index:
             return self._index[student_id]
         raise ValueError(f"Студент с ID {student_id} не найден")
-    
-    def find_by_filter(self, field: str, value) -> list:
-        """Поиск по одному полю"""
-        valid_fields = ["id", "name", "group", "grade"]
-        if field not in valid_fields:
-            raise ValueError(f"Неизвестное поле: {field}")
-        
-        # Для ID используем индекс
-        if field == "id":
-            try:
-                return [self.get_by_id(int(value))]
-            except ValueError:
-                return []
-        
-        results = []
-        for student in self._data:
-            if field == "name" and student.name.lower() == value.lower():
-                results.append(student)
-            elif field == "group" and student.group.lower() == value.lower():
-                results.append(student)
-            elif field == "grade" and student.grade == value:
-                results.append(student)
-        return results
-    
-    def find_by_multiple_filters(self, filters: dict) -> list:
-        """Поиск по нескольким полям"""
-        results = self._data
-        for field, value in filters.items():
-            if field == "name":
-                results = [s for s in results if s.name.lower() == value.lower()]
-            elif field == "group":
-                results = [s for s in results if s.group.lower() == value.lower()]
-            elif field == "grade":
-                results = [s for s in results if s.grade == value]
-            elif field == "id":
-                results = [s for s in results if s.id == value]
-            else:
-                raise ValueError(f"Неизвестное поле: {field}")
-        return results
-    
-    def clear(self):
-        """Очистка таблицы"""
+
+    def clear(self) -> None:
+        """Очищает таблицу, индекс и сохраняет пустое состояние."""
         self._data = []
         self._next_id = 1
         self._index = {}
         self._save()
-    
-    def __len__(self):
-        return len(self._data)
