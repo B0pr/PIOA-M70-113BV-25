@@ -79,3 +79,16 @@ class Table:
     
     def __len__(self):
         return len(self._data)
+    
+    def sort_by(self, field: str, reverse: bool = False) -> list:
+        """
+        Сортировка студентов по указанному полю
+        field: 'id', 'name', 'group', 'grade'
+        reverse: False - по возрастанию, True - по убыванию
+        """
+        valid_fields = ["id", "name", "group", "grade"]
+        if field not in valid_fields:
+            raise ValueError(f"Неизвестное поле: {field}. Доступные: {valid_fields}")
+        
+        sorted_data = sorted(self._data, key=lambda s: getattr(s, field), reverse=reverse)
+        return sorted_data

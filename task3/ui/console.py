@@ -100,7 +100,7 @@ class ConsoleUI:
                     print("\n❌ Не указано ни одного критерия поиска")
                 else:
                     results = self.db.find_by_multiple_filters(filters)
-                    print(f"\n--- Результаты поиска ---")
+                    print(f"\n--- РезульConsoleUIтаты поиска ---")
                     self._print_students(results)
             
             else:
@@ -110,7 +110,44 @@ class ConsoleUI:
             print(f"\n❌ Ошибка ввода: {e}")
         except Exception as e:
             print(f"\n❌ Ошибка: {e}")
-    
+    def _sort_students(self):
+        """Сортировка студентов"""
+        print("\n--- Сортировка студентов ---")
+        print("Сортировать по:")
+        print("  1. ID")
+        print("  2. Имени")
+        print("  3. Группе")
+        print("  4. Баллу")
+        
+        field_choice = input("Выберите поле (1-4): ").strip()
+        
+        field_map = {
+            "1": "id",
+            "2": "name", 
+            "3": "group",
+            "4": "grade"
+        }
+        
+        if field_choice not in field_map:
+            print("\n❌ Неверный выбор")
+            return
+        
+        field = field_map[field_choice]
+        
+        print("\nНаправление сортировки:")
+        print("  1. По возрастанию")
+        print("  2. По убыванию")
+        
+        order_choice = input("Выберите направление (1-2): ").strip()
+        reverse = (order_choice == "2")
+        
+        try:
+            sorted_students = self.db.sort_by(field, reverse)
+            print(f"\n--- Сортировка по полю '{field}' ({'убывание' if reverse else 'возрастание'}) ---")
+            self._print_students(sorted_students)
+        except ValueError as e:
+            print(f"\n❌ Ошибка: {e}")
+
     def run(self):
         """Запуск интерфейса"""
         while True:
@@ -120,10 +157,11 @@ class ConsoleUI:
             print("1. Добавить студента")
             print("2. Показать всех студентов")
             print("3. Поиск по фильтру")
-            print("4. Выйти")
+            print("4. Сортировка")
+            print("5. Выйти")
             print("-"*40)
             
-            choice = input("Выберите действие (1-4): ").strip()
+            choice = input("Выберите действие (1-5): ").strip()
             
             if choice == "1":
                 self._add_student()
@@ -132,6 +170,8 @@ class ConsoleUI:
             elif choice == "3":
                 self._search()
             elif choice == "4":
+                self._sort_students()
+            elif choice == "5":
                 print("\nДо свидания!")
                 break
             else:
